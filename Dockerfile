@@ -13,8 +13,8 @@ COPY package*.json ./
 # Remove prepare script (husky) for Docker builds
 RUN npm pkg delete scripts.prepare
 
-# Install dependencies
-RUN npm install --production && npm cache clean --force
+# Install ALL dependencies (including dev) for frontend build
+RUN npm install && npm cache clean --force
 
 # Copy frontend source
 COPY src ./src
