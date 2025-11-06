@@ -49,7 +49,7 @@ RUN npm install --production && npm cache clean --force
 COPY server ./server
 
 # Copy built frontend from builder stage
-COPY --from=frontend-builder /app/dist ./frontend/build
+COPY --from=frontend-builder /app/build ./frontend/build
 
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R node:node /app/logs
