@@ -30,6 +30,9 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
+# Install git (required for some npm dependencies)
+RUN apk add --no-cache git
+
 # Install production dependencies only
 COPY package*.json ./
 RUN npm install --production && npm cache clean --force
