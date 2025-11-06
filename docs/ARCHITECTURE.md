@@ -257,22 +257,137 @@ scenes: [
 
 ## Deployment Architecture
 
+### Production Stack
+
+```
+┌─────────────────────────────────────────┐
+│         Load Balancer (Optional)        │
+└────────────────┬────────────────────────┘
+                 │
+┌────────────────▼────────────────────────┐
+│         BestCity Application            │
+│  ┌──────────────────────────────────┐   │
+│  │  Frontend (React + Vite)         │   │
+│  │  Served from /frontend/build     │   │
+│  └──────────────────────────────────┘   │
+│  ┌──────────────────────────────────┐   │
+│  │  Backend (Express.js)            │   │
+│  │  Port: 4000                      │   │
+│  │  - Winston Logging               │   │
+│  │  - Prometheus Metrics            │   │
+│  └──────────────────────────────────┘   │
+└────────────────┬────────────────────────┘
+                 │
+┌────────────────▼────────────────────────┐
+│         MongoDB Database                │
+│         Port: 27017                     │
+│         - Mongoose ODM                  │
+│         - Connection Pooling            │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│         Monitoring Stack                │
+│  ┌──────────────┐  ┌─────────────────┐  │
+│  │  Prometheus  │  │  Winston Logs   │  │
+│  │  Port: 9090  │  │  Console Output │  │
+│  └──────────────┘  └─────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+### Docker Architecture
+
+**Multi-Stage Build Process:**
+
+```
+Stage 1: Frontend Builder (node:20-alpine)
+├── Install git (npm dependencies)
+├── Install ALL dependencies (including devDependencies)
+├── Build frontend with Vite → /build directory
+└── Output: Optimized static assets
+
+Stage 2: Production Image (node:20-alpine)
+├── Install git
+├── Install production dependencies only
+├── Copy server code
+├── Copy built frontend from Stage 1
+├── Create logs directory
+├── Switch to non-root user (node)
+└── Expose port 4000
+```
+
+**Container Configuration:**
+- **Base Image:** node:20-alpine (lightweight)
+- **User:** node (non-root for security)
+- **Health Check:** HTTP GET to / every 30s
+- **Volumes:** Logs directory (console-only in production)
+- **Environment:** DISABLE_FILE_LOGGING=true
+
+### Infrastructure as Code (Terraform)
+
+**AWS Resources Provisioned:**
+- VPC: Reuses existing DocuSrchV2 VPC (10.0.0.0/16)
+- Subnet: Public subnet in us-west-1a (10.0.1.0/24)
+- Security Group: Ports 22, 80, 443, 4000, 9090
+- EC2 Instance: t3.small Ubuntu 22.04
+- Elastic IP: Static public IP address
+- SSH Key Pair: For secure access
+
+**Auto-Deployment Script (user-data):**
+- Installs Docker & Docker Compose
+- Clones application from GitHub
+- Creates environment configuration
+- Builds and starts Docker containers
+- Configures firewall (UFW)
+- Sets up log rotation
+- Registers systemd service
+
 ### Build Process
 ```bash
+# Development
+npm run dev → Concurrent frontend (port 3000) & backend (port 4000)
+
+# Production (Local)
 npm run build → vite build → /build directory
+
+# Production (Docker)
+docker-compose up -d --build
+├── Builds multi-stage Dockerfile
+├── Creates optimized image (~150MB)
+├── Starts app + MongoDB + Prometheus
+└── Automatic health checks
 ```
 
 ### Deployment Options
-1. **Vercel** (Recommended)
-2. **Netlify**
-3. **AWS S3 + CloudFront**
-4. **Docker Container**
+1. **Docker + Docker Compose** (Implemented & Recommended)
+2. **AWS EC2 with Terraform** (Implemented)
+3. **Vercel** (Frontend only)
+4. **Netlify** (Frontend only)
+5. **AWS S3 + CloudFront** (Frontend only)
 
 ### Environment Configuration
-```
-VITE_API_BASE_URL - Backend API URL
-VITE_INFURA_ID - Web3 provider
-VITE_NETWORK_ID - Blockchain network
+```env
+# Server
+PORT=4000
+NODE_ENV=production
+
+# Database
+MONGO_URI=mongodb://mongodb:27017/bestcity
+
+# Security
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRE=7d
+
+# Frontend
+FRONTEND_URL=http://your-domain.com
+VITE_API_BASE_URL=http://localhost:4000/api/v1
+
+# Logging
+LOG_LEVEL=info
+DISABLE_FILE_LOGGING=true  # Docker/production
+
+# Monitoring
+METRICS_ENABLED=true
+METRICS_PORT=9090
 ```
 
 ## Scalability Considerations
@@ -307,6 +422,157 @@ VITE_NETWORK_ID - Blockchain network
 - Latest Firefox
 - Latest Safari
 
+## Logging Architecture
+
+### Winston Logging System
+
+**Log Management:**
+```javascript
+Logger Configuration:
+├── Log Levels: error, warn, info, debug
+├── Formats: JSON (structured), Console (colorized)
+├── Transports: Console (production), Files (development)
+└── Metadata: service, environment, timestamp
+```
+
+**Log Files (Development Only):**
+- `app-YYYY-MM-DD.log` - Application logs (info level)
+- `combined-YYYY-MM-DD.log` - All logs
+- `error-YYYY-MM-DD.log` - Errors only
+- `exceptions-YYYY-MM-DD.log` - Uncaught exceptions
+- `rejections-YYYY-MM-DD.log` - Unhandled promise rejections
+
+**Log Rotation:**
+- **Frequency:** Daily
+- **Retention:** 14 days
+- **Max Size:** 20MB per file
+- **Format:** JSON for parsing and analysis
+
+**Production Logging:**
+- Console output only (captured by Docker)
+- Structured JSON format
+- Includes metadata (timestamp, level, service)
+- HTTP request logging with Morgan
+
+**Example Log Entry:**
+```json
+{
+  "timestamp": "2025-11-06 20:37:15",
+  "level": "info",
+  "message": "🚀 Server running on port 4000",
+  "port": 4000,
+  "environment": "production",
+  "service": "bestcity-api"
+}
+```
+
+### HTTP Request Logging (Morgan)
+
+```
+Format: combined
+Output: Winston stream
+Includes: method, path, status, response time, user agent
+```
+
+## Monitoring Architecture
+
+### Prometheus Metrics System
+
+**Metrics Collection:**
+```
+Prometheus Registry
+├── Default Metrics (Node.js)
+│   ├── CPU usage
+│   ├── Memory (heap, RSS)
+│   ├── Event loop lag
+│   └── Garbage collection
+├── HTTP Metrics
+│   ├── Request count (by method, route, status)
+│   ├── Request duration (histogram)
+│   └── Active connections (gauge)
+├── Database Metrics
+│   ├── Connection status
+│   └── Query duration
+└── Application Metrics
+    ├── Notes created/updated/deleted
+    ├── Error counts (by type, route)
+    └── Custom business metrics
+```
+
+**Available Metrics:**
+
+**System Metrics:**
+```
+bestcity_process_cpu_user_seconds_total
+bestcity_process_heap_bytes
+bestcity_process_resident_memory_bytes
+bestcity_nodejs_gc_duration_seconds
+```
+
+**HTTP Metrics:**
+```
+bestcity_http_requests_total{method,route,status_code}
+bestcity_http_request_duration_seconds{method,route,status_code}
+bestcity_active_connections
+```
+
+**Database Metrics:**
+```
+bestcity_db_connection_status (1=connected, 0=disconnected)
+bestcity_db_query_duration_seconds{operation,collection}
+```
+
+**Application Metrics:**
+```
+bestcity_notes_created_total
+bestcity_notes_deleted_total
+bestcity_notes_updated_total
+bestcity_notes_retrieved_total
+bestcity_errors_total{type,route}
+```
+
+**Prometheus Configuration:**
+- **Scrape Interval:** 10-15 seconds
+- **Endpoint:** `/metrics` (port 4000)
+- **UI:** Prometheus dashboard (port 9090)
+- **Retention:** Configurable (default 15 days)
+
+**Example Queries:**
+```promql
+# Request rate (per second)
+rate(bestcity_http_requests_total[5m])
+
+# Average request duration
+rate(bestcity_http_request_duration_seconds_sum[5m])
+/ rate(bestcity_http_request_duration_seconds_count[5m])
+
+# Error rate
+rate(bestcity_errors_total[5m])
+
+# Database connection status
+bestcity_db_connection_status
+```
+
+### Health Check System
+
+**Endpoint:** `/health`
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-11-06T20:37:33.505Z",
+  "uptime": 67.519374739,
+  "environment": "production"
+}
+```
+
+**Used By:**
+- Docker health checks (30s interval)
+- Load balancers
+- Monitoring systems
+- Uptime monitors
+
 ## Future Architecture Enhancements
 
 1. **TypeScript Migration**
@@ -324,12 +590,19 @@ VITE_NETWORK_ID - Blockchain network
    - E2E test suite
    - Visual regression testing
 
-4. **Monitoring & Analytics**
-   - Error tracking (Sentry)
-   - Performance monitoring
-   - User analytics
+4. **Enhanced Monitoring**
+   - Grafana dashboards for Prometheus
+   - Alert manager integration
+   - APM (Application Performance Monitoring)
+   - Distributed tracing (Jaeger/Zipkin)
 
-5. **Internationalization (i18n)**
+5. **Logging Enhancements**
+   - Centralized log aggregation (ELK Stack)
+   - Log shipping to CloudWatch/Datadog
+   - Real-time log analysis
+   - Custom log parsers
+
+6. **Internationalization (i18n)**
    - Multi-language support
    - Currency localization
    - Date/time formatting
