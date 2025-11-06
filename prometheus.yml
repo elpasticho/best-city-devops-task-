@@ -1,0 +1,36 @@
+# Prometheus Configuration for BestCity Application
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'bestcity-monitor'
+
+# Alerting configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # BestCity Application Metrics
+  - job_name: 'bestcity-app'
+    static_configs:
+      - targets: ['app:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # MongoDB Exporter (if added later)
+  # - job_name: 'mongodb'
+  #   static_configs:
+  #     - targets: ['mongodb-exporter:9216']
+
+  # Node Exporter (if added later for system metrics)
+  # - job_name: 'node'
+  #   static_configs:
+  #     - targets: ['node-exporter:9100']

@@ -1,0 +1,31 @@
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "production"
+
+# Project Configuration
+project_name = "bestcity"
+
+# Network Configuration
+vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+
+# EC2 Configuration
+instance_type = "t3.medium"
+
+# SSH Configuration
+# Generate with: ssh-keygen -t rsa -b 4096 -f ~/.ssh/bestcity-key
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ... your-public-key-here"
+
+# Security Configuration
+# Restrict to your IP for better security
+allowed_ssh_cidr = ["0.0.0.0/0"]
+
+# Infrastructure Options
+use_elastic_ip = true
+
+# Application Configuration
+mongo_uri  = "mongodb://mongodb:27017/bestcity"
+jwt_secret = "your-very-secure-jwt-secret-here"
