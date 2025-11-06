@@ -4,6 +4,9 @@ FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
+# Install git (required for some npm dependencies)
+RUN apk add --no-cache git
+
 # Copy package files
 COPY package*.json ./
 
