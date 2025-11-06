@@ -10,8 +10,10 @@ RUN apk add --no-cache git
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (skip husky in CI)
-ENV HUSKY=0
+# Remove prepare script (husky) for Docker builds
+RUN npm pkg delete scripts.prepare
+
+# Install dependencies
 RUN npm install --production && npm cache clean --force
 
 # Copy frontend source
@@ -36,7 +38,11 @@ RUN apk add --no-cache git
 
 # Install production dependencies only
 COPY package*.json ./
-ENV HUSKY=0
+
+# Remove prepare script (husky) for Docker builds
+RUN npm pkg delete scripts.prepare
+
+# Install dependencies
 RUN npm install --production && npm cache clean --force
 
 # Copy server code
