@@ -26,40 +26,40 @@ const consoleFormat = winston.format.combine(
 // Create logs directory if it doesn't exist
 const logsDir = path.join(__dirname, '../../logs');
 
-// Daily rotate file transport for error logs
-const errorFileTransport = new DailyRotateFile({
-    filename: path.join(logsDir, 'error-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'error',
-    maxSize: '20m',
-    maxFiles: '14d',
-    format: logFormat,
-});
-
-// Daily rotate file transport for combined logs
-const combinedFileTransport = new DailyRotateFile({
-    filename: path.join(logsDir, 'combined-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    maxSize: '20m',
-    maxFiles: '14d',
-    format: logFormat,
-});
-
-// Daily rotate file transport for application logs
-const appFileTransport = new DailyRotateFile({
-    filename: path.join(logsDir, 'app-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    level: 'info',
-    maxSize: '20m',
-    maxFiles: '14d',
-    format: logFormat,
-});
-
-// Create Winston logger
+// Create Winston logger transports
 const transports = [];
 
-// Only add file transports if not in Docker or if explicitly enabled
+// Only add file transports if file logging is enabled
 if (process.env.DISABLE_FILE_LOGGING !== 'true') {
+    // Daily rotate file transport for error logs
+    const errorFileTransport = new DailyRotateFile({
+        filename: path.join(logsDir, 'error-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        level: 'error',
+        maxSize: '20m',
+        maxFiles: '14d',
+        format: logFormat,
+    });
+
+    // Daily rotate file transport for combined logs
+    const combinedFileTransport = new DailyRotateFile({
+        filename: path.join(logsDir, 'combined-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        maxSize: '20m',
+        maxFiles: '14d',
+        format: logFormat,
+    });
+
+    // Daily rotate file transport for application logs
+    const appFileTransport = new DailyRotateFile({
+        filename: path.join(logsDir, 'app-%DATE%.log'),
+        datePattern: 'YYYY-MM-DD',
+        level: 'info',
+        maxSize: '20m',
+        maxFiles: '14d',
+        format: logFormat,
+    });
+
     transports.push(
         errorFileTransport,
         combinedFileTransport,
