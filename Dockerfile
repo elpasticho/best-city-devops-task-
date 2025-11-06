@@ -54,6 +54,9 @@ COPY --from=frontend-builder /app/build ./frontend/build
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs && chmod 777 /app/logs
 
+# Disable file logging in Docker (use console only)
+ENV DISABLE_FILE_LOGGING=true
+
 # Use non-root user
 USER node
 

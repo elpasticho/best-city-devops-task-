@@ -56,42 +56,48 @@ const appFileTransport = new DailyRotateFile({
 });
 
 // Create Winston logger
-const logger = winston.createLogger({
+const transports = [];
+
+// Only add file transports if not in Docker or if explicitly enabled
+if (process.env.DISABLE_FILE_LOGGING !== 'true') {
+    transports.push(
+        errorFileTransport,
+        combinedFileTransport,
+        appFileTransport
+    );
+}
+
+const loggerConfig = {
     level: process.env.LOG_LEVEL || 'info',
     format: logFormat,
     defaultMeta: {
         service: 'bestcity-api',
         environment: process.env.NODE_ENV || 'development'
     },
-    transports: [
-        // Write all logs with level 'error' to error file
-        errorFileTransport,
+    transports,
+};
 
-        // Write all logs to combined file
-        combinedFileTransport,
-
-        // Write application logs
-        appFileTransport,
-    ],
-    // Handle exceptions
-    exceptionHandlers: [
+// Only add file handlers if file logging is enabled
+if (process.env.DISABLE_FILE_LOGGING !== 'true') {
+    loggerConfig.exceptionHandlers = [
         new DailyRotateFile({
             filename: path.join(logsDir, 'exceptions-%DATE%.log'),
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '14d',
         }),
-    ],
-    // Handle promise rejections
-    rejectionHandlers: [
+    ];
+    loggerConfig.rejectionHandlers = [
         new DailyRotateFile({
             filename: path.join(logsDir, 'rejections-%DATE%.log'),
             datePattern: 'YYYY-MM-DD',
             maxSize: '20m',
             maxFiles: '14d',
         }),
-    ],
-});
+    ];
+}
+
+const logger = winston.createLogger(loggerConfig);
 
 // Add console transport in development
 if (process.env.NODE_ENV !== 'production') {
