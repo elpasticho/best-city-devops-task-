@@ -10,8 +10,9 @@ RUN apk add --no-cache git
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production --ignore-scripts && npm cache clean --force
+# Install dependencies (skip husky in CI)
+ENV HUSKY=0
+RUN npm install --production && npm cache clean --force
 
 # Copy frontend source
 COPY src ./src
@@ -35,7 +36,8 @@ RUN apk add --no-cache git
 
 # Install production dependencies only
 COPY package*.json ./
-RUN npm install --production --ignore-scripts && npm cache clean --force
+ENV HUSKY=0
+RUN npm install --production && npm cache clean --force
 
 # Copy server code
 COPY server ./server
