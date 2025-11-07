@@ -106,6 +106,15 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = var.allowed_ssh_cidr
   }
 
+  # Grafana
+  ingress {
+    description = "Grafana"
+    from_port   = 3001
+    to_port     = 3001
+    protocol    = "tcp"
+    cidr_blocks = var.allowed_ssh_cidr
+  }
+
   # Outbound traffic
   egress {
     description = "All outbound traffic"
