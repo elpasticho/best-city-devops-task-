@@ -1,0 +1,5 @@
+# Ignore Grafana data directory (if mounted locally)
+data/
+
+# Keep provisioning configuration
+!provisioning/
