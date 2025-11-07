@@ -1,4 +1,5 @@
 const Note = require('../models/Note');
+const { metrics } = require('../config/metrics');
 
 // Create a new note
 exports.createNote = async (req, res) => {
@@ -16,6 +17,9 @@ exports.createNote = async (req, res) => {
             title,
             content
         });
+
+        // Increment metrics
+        metrics.notesCreated.inc();
 
         console.log(`[Notes API] Created note in MongoDB with ID: ${note._id}`);
 
@@ -44,6 +48,9 @@ exports.createNote = async (req, res) => {
 exports.getAllNotes = async (req, res) => {
     try {
         const notes = await Note.find().sort({ createdAt: -1 });
+
+        // Increment metrics
+        metrics.notesRetrieved.inc();
 
         console.log(`[Notes API] Retrieved ${notes.length} notes from MongoDB`);
 
@@ -81,6 +88,9 @@ exports.getNoteById = async (req, res) => {
                 message: 'Note not found'
             });
         }
+
+        // Increment metrics
+        metrics.notesRetrieved.inc();
 
         console.log(`[Notes API] Retrieved note from MongoDB with ID: ${id}`);
 
@@ -126,6 +136,9 @@ exports.updateNote = async (req, res) => {
         note.updatedAt = Date.now();
 
         await note.save();
+
+        // Increment metrics
+        metrics.notesUpdated.inc();
 
         console.log(`[Notes API] Updated note in MongoDB with ID: ${id}`);
 
@@ -173,6 +186,9 @@ exports.deleteNote = async (req, res) => {
         };
 
         await Note.findByIdAndDelete(id);
+
+        // Increment metrics
+        metrics.notesDeleted.inc();
 
         console.log(`[Notes API] Deleted note from MongoDB with ID: ${id}`);
 
